@@ -2,15 +2,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <stdexcept>  // для std::runtime_error
+#include <stdexcept>  
 
 using namespace std;
 
-// Функция для подключения к базе данных
+
 pqxx::connection connectToDatabase() {
     try {
-        // Используем формат подключения
-        // ЗАМЕНИТЕ "ваш_пароль" на ваш реальный пароль PostgreSQL
+        
         pqxx::connection conn("host=localhost port=5432 dbname=products_db user=postgres password=123456");
 
         if (conn.is_open()) {
@@ -23,11 +22,11 @@ pqxx::connection connectToDatabase() {
     }
     catch (const exception& e) {
         cerr << "Ошибка подключения: " << e.what() << endl;
-        throw;  // пробрасываем исключение дальше
+        throw;  
     }
 }
 
-// Функция для отображения меню
+
 void showMenu() {
     cout << "\n=== СИСТЕМА УПРАВЛЕНИЯ ПРОДУКТАМИ ===" << endl;
     cout << "1. Показать все категории" << endl;
@@ -44,7 +43,7 @@ void showMenu() {
     cout << "Выберите действие: ";
 }
 
-// Основные функции работы с БД
+
 void showCategories(pqxx::connection& conn) {
     try {
         pqxx::work txn(conn);
@@ -175,7 +174,7 @@ void addSale(pqxx::connection& conn) {
     try {
         pqxx::work txn(conn);
 
-        // Проверяем, есть ли достаточно товара
+        // Проверяем есть ли достаточно товара
         pqxx::result check = txn.exec(
             "SELECT quantity FROM products WHERE id = " + to_string(product_id)
         );
@@ -392,4 +391,5 @@ int main() {
 
     cout << "Программа завершена." << endl;
     return 0;
+
 }
