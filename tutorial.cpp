@@ -1,16 +1,15 @@
-﻿#include <pqxx/pqxx>
+#include <pqxx/pqxx>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <stdexcept>  
+#include <stdexcept>
 
 using namespace std;
+using namespace pqxx;
 
-
-pqxx::connection connectToDatabase() {
+connection connectToDatabase() {
     try {
-        
-        pqxx::connection conn("host=localhost port=5432 dbname=products_db user=postgres password=123456");
+        connection conn("host=localhost port=5432 dbname=products_db user=postgres password=123456");
 
         if (conn.is_open()) {
             cout << "Успешное подключение к базе данных!" << endl;
@@ -22,10 +21,9 @@ pqxx::connection connectToDatabase() {
     }
     catch (const exception& e) {
         cerr << "Ошибка подключения: " << e.what() << endl;
-        throw;  
+        throw;
     }
 }
-
 
 void showMenu() {
     cout << "\n=== СИСТЕМА УПРАВЛЕНИЯ ПРОДУКТАМИ ===" << endl;
@@ -43,11 +41,10 @@ void showMenu() {
     cout << "Выберите действие: ";
 }
 
-
-void showCategories(pqxx::connection& conn) {
+void showCategories(connection& conn) {
     try {
-        pqxx::work txn(conn);
-        pqxx::result res = txn.exec("SELECT * FROM categories ORDER BY id");
+        work txn(conn);
+        result res = txn.exec("SELECT * FROM categories ORDER BY id");
 
         cout << "\n=== КАТЕГОРИИ ===" << endl;
         for (const auto& row : res) {
@@ -62,10 +59,10 @@ void showCategories(pqxx::connection& conn) {
     }
 }
 
-void showProducts(pqxx::connection& conn) {
+void showProducts(connection& conn) {
     try {
-        pqxx::work txn(conn);
-        pqxx::result res = txn.exec("SELECT * FROM products ORDER BY id");
+        work txn(conn);
+        result res = txn.exec("SELECT * FROM products ORDER BY id");
 
         cout << "\n=== ПРОДУКТЫ ===" << endl;
         for (const auto& row : res) {
@@ -83,10 +80,10 @@ void showProducts(pqxx::connection& conn) {
     }
 }
 
-void showSales(pqxx::connection& conn) {
+void showSales(connection& conn) {
     try {
-        pqxx::work txn(conn);
-        pqxx::result res = txn.exec("SELECT * FROM sales ORDER BY sale_date");
+        work txn(conn);
+        result res = txn.exec("SELECT * FROM sales ORDER BY sale_date");
 
         cout << "\n=== ПРОДАЖИ ===" << endl;
         for (const auto& row : res) {
@@ -103,7 +100,7 @@ void showSales(pqxx::connection& conn) {
     }
 }
 
-void addCategory(pqxx::connection& conn) {
+void addCategory(connection& conn) {
     int id;
     string name;
 
@@ -115,7 +112,7 @@ void addCategory(pqxx::connection& conn) {
     getline(cin, name);
 
     try {
-        pqxx::work txn(conn);
+        work txn(conn);
         txn.exec("INSERT INTO categories (id, category_name) VALUES (" +
             to_string(id) + ", " + txn.quote(name) + ")");
         txn.commit();
@@ -126,7 +123,7 @@ void addCategory(pqxx::connection& conn) {
     }
 }
 
-void addProduct(pqxx::connection& conn) {
+void addProduct(connection& conn) {
     int id, price, quantity, category_id;
     string name;
 
@@ -144,7 +141,7 @@ void addProduct(pqxx::connection& conn) {
     cin >> category_id;
 
     try {
-        pqxx::work txn(conn);
+        work txn(conn);
         txn.exec("INSERT INTO products (id, name, price, quantity, category_id) VALUES (" +
             to_string(id) + ", " + txn.quote(name) + ", " +
             to_string(price) + ", " + to_string(quantity) + ", " +
@@ -157,7 +154,7 @@ void addProduct(pqxx::connection& conn) {
     }
 }
 
-void addSale(pqxx::connection& conn) {
+void addSale(connection& conn) {
     int id, product_id, quantity;
     string date;
 
@@ -172,22 +169,19 @@ void addSale(pqxx::connection& conn) {
     cin >> quantity;
 
     try {
-        pqxx::work txn(conn);
+        work txn(conn);
 
-        // Проверяем есть ли достаточно товара
-        pqxx::result check = txn.exec(
+        result check = txn.exec(
             "SELECT quantity FROM products WHERE id = " + to_string(product_id)
         );
 
         if (!check.empty()) {
             int available = check[0][0].as<int>();
             if (quantity <= available) {
-                // Добавляем продажу
                 txn.exec("INSERT INTO sales (id, product_id, sale_date, quantity_sold) VALUES (" +
                     to_string(id) + ", " + to_string(product_id) + ", " +
                     txn.quote(date) + ", " + to_string(quantity) + ")");
 
-                // Обновляем количество товара
                 txn.exec("UPDATE products SET quantity = quantity - " + to_string(quantity) +
                     " WHERE id = " + to_string(product_id));
 
@@ -209,7 +203,7 @@ void addSale(pqxx::connection& conn) {
     }
 }
 
-void findProductsByCategory(pqxx::connection& conn) {
+void findProductsByCategory(connection& conn) {
     int category_id;
 
     cout << "\n=== ПОИСК ПРОДУКТОВ ПО КАТЕГОРИИ ===" << endl;
@@ -217,8 +211,8 @@ void findProductsByCategory(pqxx::connection& conn) {
     cin >> category_id;
 
     try {
-        pqxx::work txn(conn);
-        pqxx::result res = txn.exec(
+        work txn(conn);
+        result res = txn.exec(
             "SELECT p.*, c.category_name as category_name "
             "FROM products p "
             "JOIN categories c ON p.category_id = c.id "
@@ -245,10 +239,10 @@ void findProductsByCategory(pqxx::connection& conn) {
     }
 }
 
-void calculateTotalRevenue(pqxx::connection& conn) {
+void calculateTotalRevenue(connection& conn) {
     try {
-        pqxx::work txn(conn);
-        pqxx::result res = txn.exec(
+        work txn(conn);
+        result res = txn.exec(
             "SELECT p.name, SUM(s.quantity_sold * p.price) as total_revenue "
             "FROM products p "
             "JOIN sales s ON p.id = s.product_id "
@@ -272,10 +266,10 @@ void calculateTotalRevenue(pqxx::connection& conn) {
     }
 }
 
-void showTop5Products(pqxx::connection& conn) {
+void showTop5Products(connection& conn) {
     try {
-        pqxx::work txn(conn);
-        pqxx::result res = txn.exec(
+        work txn(conn);
+        result res = txn.exec(
             "SELECT p.name, SUM(s.quantity_sold) as total_sold "
             "FROM products p "
             "JOIN sales s ON p.id = s.product_id "
@@ -297,10 +291,10 @@ void showTop5Products(pqxx::connection& conn) {
     }
 }
 
-void showSoldQuantities(pqxx::connection& conn) {
+void showSoldQuantities(connection& conn) {
     try {
-        pqxx::work txn(conn);
-        pqxx::result res = txn.exec(
+        work txn(conn);
+        result res = txn.exec(
             "SELECT p.name, SUM(s.quantity_sold) as total_sold "
             "FROM products p "
             "JOIN sales s ON p.id = s.product_id "
@@ -320,18 +314,15 @@ void showSoldQuantities(pqxx::connection& conn) {
 }
 
 int main() {
-   
     setlocale(LC_ALL, "RU");
     cout << "СИСТЕМА УПРАВЛЕНИЯ ПРОДУКТАМИ" << endl;
 
     try {
-        // Подключаемся к базе данных
-        pqxx::connection conn = connectToDatabase();
+        connection conn = connectToDatabase();
 
-        // Проверяем версию PostgreSQL
         {
-            pqxx::work txn(conn);
-            pqxx::result r = txn.exec("SELECT version();");
+            work txn(conn);
+            result r = txn.exec("SELECT version();");
             cout << "Версия PostgreSQL: " << r[0][0].c_str() << endl;
             txn.commit();
         }
@@ -340,7 +331,7 @@ int main() {
         do {
             showMenu();
             cin >> choice;
-            cin.ignore();  // очищаем буфер после ввода числа
+            cin.ignore();
 
             switch (choice) {
             case 1:
@@ -382,7 +373,6 @@ int main() {
         } while (choice != 0);
 
         conn.close();
-
     }
     catch (const exception& e) {
         cerr << "Критическая ошибка: " << e.what() << endl;
@@ -391,5 +381,4 @@ int main() {
 
     cout << "Программа завершена." << endl;
     return 0;
-
 }
